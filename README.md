@@ -64,7 +64,22 @@ cp .env.example .env
 # .env の GEMINI_API_KEY にキーを設定
 ```
 
-### 3. Python依存パッケージ
+### 3. Python
+
+Python 3.10以上が必要。
+
+```bash
+# macOS (Homebrew)
+brew install python
+
+# Ubuntu / Debian
+sudo apt install python3 python3-pip
+
+# バージョン確認
+python3 --version
+```
+
+依存パッケージ:
 
 ```bash
 pip install python-dotenv
