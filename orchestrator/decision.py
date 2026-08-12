@@ -39,9 +39,10 @@ def _load_files(directory, names, suffix) -> str:
     parts = []
     for name in names:
         path = directory / f"{name}-{suffix}.md"
-        if not path.exists():
-            raise FileNotFoundError(f"File not found: {path}")
-        parts.append(f"## {name.capitalize()}\n\n{path.read_text()}")
+        if path.exists():
+            parts.append(f"## {name.capitalize()}\n\n{path.read_text()}")
+    if not parts:
+        raise FileNotFoundError(f"No {suffix} files found in {directory}")
     return "\n\n---\n\n".join(parts)
 
 

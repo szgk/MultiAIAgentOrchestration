@@ -31,6 +31,7 @@ Thumbs.db
 *.tmp
 *.bak
 
-# AI Council: 作業中の一時出力（current/は履歴として残さない場合）
-# .ai/discussions/current/
-# .ai/reviews/current/
+# AI Council: 生成ファイル（gitで管理しない）
+.ai/discussions/current/
+.ai/reviews/current/
+.ai/decisions/

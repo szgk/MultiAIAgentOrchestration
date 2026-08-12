@@ -34,9 +34,10 @@ def _load_proposals() -> str:
     proposals = []
     for name in ("codex", "claude", "gemini"):
         path = DISCUSSIONS / f"{name}-proposal.md"
-        if not path.exists():
-            raise FileNotFoundError(f"Proposal not found: {path}")
-        proposals.append(f"## {name.capitalize()} Proposal\n\n{path.read_text()}")
+        if path.exists():
+            proposals.append(f"## {name.capitalize()} Proposal\n\n{path.read_text()}")
+    if not proposals:
+        raise FileNotFoundError("No proposals found. Run proposal phase first.")
     return "\n\n---\n\n".join(proposals)
 
 
@@ -49,11 +50,14 @@ def run(timeout: int = 180) -> dict[str, str]:
     results = {}
     for name, fn in AGENTS.items():
         print(f"[review] {name} ...")
-        output = fn(prompt, timeout=timeout)
-        path = REVIEWS / f"{name}-review.md"
-        path.write_text(output)
-        print(f"[review] {name} -> {path}")
-        results[name] = output
+        try:
+            output = fn(prompt, timeout=timeout)
+            path = REVIEWS / f"{name}-review.md"
+            path.write_text(output)
+            print(f"[review] {name} -> {path}")
+            results[name] = output
+        except Exception as e:
+            print(f"[review] {name} SKIPPED ({e})")
 
     return results
 

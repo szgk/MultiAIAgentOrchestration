@@ -41,11 +41,14 @@ def run(timeout: int = 180) -> dict[str, str]:
     results = {}
     for name, fn in AGENTS.items():
         print(f"[proposal] {name} ...")
-        output = fn(prompt, timeout=timeout)
-        path = DISCUSSIONS / f"{name}-proposal.md"
-        path.write_text(output)
-        print(f"[proposal] {name} -> {path}")
-        results[name] = output
+        try:
+            output = fn(prompt, timeout=timeout)
+            path = DISCUSSIONS / f"{name}-proposal.md"
+            path.write_text(output)
+            print(f"[proposal] {name} -> {path}")
+            results[name] = output
+        except Exception as e:
+            print(f"[proposal] {name} SKIPPED ({e})")
 
     return results
 
