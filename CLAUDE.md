@@ -56,6 +56,32 @@ APIキーは `.env` で管理し、`python-dotenv` で読み込む。`.env` は 
 
 `ai_council/agents.py` がモジュールロード時に `.env` を自動読み込みする。
 
+## エラーハンドリング
+
+`ai_council/agents.py` の `_classify_error()` がstderrを解析して簡潔なエラーに変換する。
+
+| 検出条件 | 例外 | メッセージ |
+|---------|------|-----------|
+| `QuotaError` / `quota exceeded` / exit 41 | `QuotaError` | `quota exceeded` |
+| `429` / `rate limit` / `exhausted` | `QuotaError` | `rate limit / quota (...)` |
+| `401` / `Unauthorized` | `RuntimeError` | `authentication failed (401)` |
+| `context` + `length/limit/window` | `RuntimeError` | `context length exceeded` |
+| `timeout` / `timed out` | `RuntimeError` | `timeout` |
+| その他 | `RuntimeError` | `exit N: stderrの先頭行` |
+
+各フェーズ（proposal / review）はAI単位でtry/exceptし、失敗したAIはSKIPPEDとして続行する。1つのAIが失敗しても他のAIの結果は保存される。
+
+```
+[review] gemini SKIPPED (quota exceeded)
+```
+
+## コミュニケーション方針
+
+- 出力は端的に。冗長な説明・前置き・まとめを省く
+- 結論を最初に述べる
+- コードはシンプルに。不要なコメント・抽象化を追加しない
+- 不要な確認をしない
+
 ## 基本方針
 
 - `.ai/` 以下のMarkdownがSource of Truth（DBなし）
