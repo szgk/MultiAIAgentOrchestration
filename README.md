@@ -12,51 +12,134 @@ Proposal → Review → Decision → Implementation → Review → Fix → Human
 
 各フェーズでCodex / Claude / Geminiが役割を分担し、Source of Truthとして `.ai/` 以下のMarkdownファイルを共有する。
 
+どのAIがどのRoleを担当するかは `.env` で設定する。詳細は `.ai/ROLES.md` を参照。
+
+---
+
 ## セットアップ
 
-### 必要なCLI
+### 1. CLIのインストール
 
 ```bash
 # Claude Code
-claude --version
+npm install -g @anthropic-ai/claude-code
 
 # Codex CLI
-codex --version
+npm install -g @openai/codex
 
 # Gemini CLI
 npm install -g @google/gemini-cli
+```
+
+バージョン確認:
+
+```bash
+claude --version
+codex --version
 gemini --version
 ```
 
-### 認証
+### 2. 認証
+
+**Claude Code**（Claude.ai アカウント）
 
 ```bash
-# Claude Code
 claude login
-
-# Codex（ChatGPT Proアカウント）
-codex login --device-auth
-
-# Gemini（Google AI Studioで取得したAPIキー）
-cp .env.example .env
-# .env に GEMINI_API_KEY を設定
 ```
 
-### 依存パッケージ
+**Codex**（ChatGPT Pro アカウント）
+
+```bash
+codex login --device-auth
+```
+
+ブラウザが開くのでChatGPT Proアカウントでログインする。
+
+**Gemini**（Google AI Studio APIキー）
+
+[Google AI Studio](https://aistudio.google.com/) でAPIキーを取得し、`.env` に設定する。
+
+```bash
+cp .env.example .env
+# .env の GEMINI_API_KEY にキーを設定
+```
+
+### 3. Python
+
+Python 3.10以上が必要。
+
+```bash
+# macOS (Homebrew)
+brew install python
+
+# Ubuntu / Debian
+sudo apt install python3 python3-pip
+
+# バージョン確認
+python3 --version
+```
+
+依存パッケージ:
 
 ```bash
 pip install python-dotenv
 ```
 
+### 4. Role設定
+
+`.env` でどのAIがどのRoleを担当するか設定する。
+
+```bash
+# .env
+ROLE_PROPOSAL_AGENTS=codex,claude,gemini
+ROLE_CHAIRMAN=claude
+ROLE_IMPLEMENTER=codex
+ROLE_CORRECTNESS_REVIEWER=claude
+ROLE_ARCHITECTURE_REVIEWER=gemini
+ROLE_SIMPLICITY_REVIEWER=codex
+ROLE_SECURITY_REVIEWER=
+ROLE_REVIEW_SYNTHESIZER=claude
+```
+
+`ROLE_SECURITY_REVIEWER` を空にするとSecurity Reviewをスキップする。
+
+---
+
 ## 使い方
 
-```python
-from ai_council.agents import run_claude, run_codex, run_gemini
+### タスクを定義する
 
-print(run_claude("提案してください"))
-print(run_codex("実装してください"))
-print(run_gemini("レビューしてください"))
+`.ai/CURRENT_TASK.md` に実装したい内容を記載する。
+
+```markdown
+# Task
+
+## Goal
+ログイン処理を実装する。
+
+## Requirements
+- メールアドレスとパスワードで認証する
+- ...
+
+## Constraints
+- 外部認証ライブラリは使用しない
 ```
+
+### フルフローを実行する
+
+```bash
+python -m orchestrator.run_council
+```
+
+### フェーズを個別実行する
+
+```bash
+python -m orchestrator.proposal   # Proposal生成
+python -m orchestrator.review     # 相互レビュー
+python -m orchestrator.decision   # Decision確定
+```
+
+---
 
 ## ディレクトリ構成
 
@@ -64,25 +147,45 @@ print(run_gemini("レビューしてください"))
 .
 ├── .ai/
 │   ├── RULES.md              # 全AIが守る共通ルール
+│   ├── ROLES.md              # Roleの定義
 │   ├── CURRENT_TASK.md       # 現在のタスク定義
-│   ├── discussions/current/  # 各AIのProposal
-│   ├── decisions/            # 最終Decision
-│   └── reviews/current/      # 各AIのレビュー
+│   ├── discussions/current/  # 各AIのProposal（gitignore済み）
+│   ├── decisions/            # 最終Decision（gitignore済み）
+│   └── reviews/current/      # 各AIのレビュー（gitignore済み）
 ├── ai_council/
 │   ├── __init__.py
 │   └── agents.py             # CLI実行ラッパー
-├── .env                      # APIキー（gitignore済み）
-└── .env.example              # キー名サンプル
+├── orchestrator/
+│   ├── proposal.py           # Proposal生成フロー
+│   ├── review.py             # 相互レビューフロー
+│   ├── decision.py           # Decision生成フロー
+│   └── run_council.py        # フルフロー実行
+├── .env                      # APIキー・Role設定（gitignore済み）
+└── .env.example              # 設定のサンプル
 ```
+
+---
+
+## エラー時の挙動
+
+いずれかのAIがエラー（quota超過・認証失敗・タイムアウト等）になった場合、そのAIをスキップして続行する。
+
+```
+[review] gemini SKIPPED (quota exceeded)
+```
+
+---
 
 ## フロー詳細
 
-| フェーズ | 担当 | 内容 |
+| フェーズ | Role | 内容 |
 |---------|------|------|
-| Proposal | Codex / Claude / Gemini | 各AIが独立して提案を作成（他AIの回答なし） |
-| Review | Codex / Claude / Gemini | 全Proposalを相互レビュー |
-| Decision | Claude（議長） | Proposal + Reviewから最終方針を決定 |
-| Implementation | Codex | Decisionに従って実装 |
-| Review | Claude / Gemini | git diffをレビュー |
-| Fix | Codex | レビュー指摘を修正 |
+| Proposal | Proposal Agent × 複数 | 各AIが独立して提案を作成（他AIの回答なし） |
+| Decision | Chairman | Proposalから最終方針を決定 |
+| Implementation | Implementer | Decisionに従って実装 |
+| Review | Correctness / Architecture / Simplicity Reviewer | git diffをレビュー |
+| Review Synthesis | Review Synthesizer | 指摘を統合しFix Decisionを生成 |
+| Fix | Implementer | Fix Decisionに従って修正 |
 | Human Review | 人間 | 確認してcommit / push |
+
+各Roleを担当するAIは `.env` で設定する。
