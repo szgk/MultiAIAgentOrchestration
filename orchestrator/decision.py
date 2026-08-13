@@ -1,6 +1,6 @@
-"""Issue 6: 最終Decision生成（議長: Claude）"""
-from ai_council.agents import run_claude
+"""最終Decision生成（議長: ROLE_CHAIRMAN）"""
 from orchestrator.paths import CURRENT_TASK, DECISIONS, DISCUSSIONS, REVIEWS, RULES
+from orchestrator.roles import get_chairman
 
 PROMPT_TEMPLATE = """\
 あなたはAI Councilの議長です。
@@ -29,7 +29,7 @@ PROMPT_TEMPLATE = """\
 - 採用理由（技術的根拠）
 - 却下した案と理由
 - 実装上の注意点
-- Codexへの実装指示（実装者が迷わない粒度で記載すること）
+- Claudeへの実装指示（実装者が迷わない粒度で記載すること）
 
 単純な多数決ではなく、技術的に最も優れた方針を選択してください。
 """
@@ -47,6 +47,7 @@ def _load_files(directory, names, suffix) -> str:
 
 
 def run(timeout: int = 300) -> str:
+    chairman_name, chairman_fn = get_chairman()
     names = ("codex", "claude", "gemini")
     prompt = PROMPT_TEMPLATE.format(
         rules=RULES.read_text(),
@@ -55,8 +56,8 @@ def run(timeout: int = 300) -> str:
         reviews=_load_files(REVIEWS, names, "review"),
     )
 
-    print("[decision] Claude（議長）が最終方針を決定中 ...")
-    output = run_claude(prompt, timeout=timeout)
+    print(f"[decision] {chairman_name}（議長）が最終方針を決定中 ...")
+    output = chairman_fn(prompt, timeout=timeout)
 
     DECISIONS.mkdir(parents=True, exist_ok=True)
     path = DECISIONS / "DECISION.md"

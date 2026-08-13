@@ -1,12 +1,6 @@
-"""Issue 4: 独立Proposal生成フロー"""
-from ai_council.agents import run_claude, run_codex, run_gemini
+"""独立Proposal生成フロー（ROLE_PROPOSAL_AGENTS）"""
 from orchestrator.paths import CURRENT_TASK, DISCUSSIONS, RULES
-
-AGENTS = {
-    "claude": run_claude,
-    "codex": run_codex,
-    "gemini": run_gemini,
-}
+from orchestrator.roles import get_proposal_agents
 
 PROMPT_TEMPLATE = """\
 あなたは設計議論の参加者です。
@@ -32,6 +26,7 @@ PROMPT_TEMPLATE = """\
 
 
 def run(timeout: int = 180) -> dict[str, str]:
+    agents = get_proposal_agents()
     rules = RULES.read_text()
     task = CURRENT_TASK.read_text()
     prompt = PROMPT_TEMPLATE.format(rules=rules, task=task)
@@ -39,7 +34,7 @@ def run(timeout: int = 180) -> dict[str, str]:
     DISCUSSIONS.mkdir(parents=True, exist_ok=True)
 
     results = {}
-    for name, fn in AGENTS.items():
+    for name, fn in agents.items():
         print(f"[proposal] {name} ...")
         try:
             output = fn(prompt, timeout=timeout)

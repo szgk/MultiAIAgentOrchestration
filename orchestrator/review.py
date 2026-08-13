@@ -1,17 +1,11 @@
-"""Issue 5: AI相互レビュー"""
-from ai_council.agents import run_claude, run_codex, run_gemini
+"""AI相互レビュー（ROLE_PROPOSAL_AGENTS）"""
 from orchestrator.paths import DISCUSSIONS, REVIEWS
-
-AGENTS = {
-    "claude": run_claude,
-    "codex": run_codex,
-    "gemini": run_gemini,
-}
+from orchestrator.roles import get_review_agents
 
 PROMPT_TEMPLATE = """\
 あなたは設計レビュアーです。
 
-以下の3つの提案を読み、それぞれについてレビューしてください。
+以下の提案を読み、それぞれについてレビューしてください。
 
 {proposals}
 
@@ -42,13 +36,14 @@ def _load_proposals() -> str:
 
 
 def run(timeout: int = 180) -> dict[str, str]:
+    agents = get_review_agents()
     proposals_text = _load_proposals()
     prompt = PROMPT_TEMPLATE.format(proposals=proposals_text)
 
     REVIEWS.mkdir(parents=True, exist_ok=True)
 
     results = {}
-    for name, fn in AGENTS.items():
+    for name, fn in agents.items():
         print(f"[review] {name} ...")
         try:
             output = fn(prompt, timeout=timeout)
